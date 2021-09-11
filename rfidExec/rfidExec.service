@@ -1,0 +1,12 @@
+[Unit]
+Description=Execute arbitrary tasks triggered by RFID.
+After=network.target
+
+[Service]
+User=pi
+Type=simple
+WorkingDirectory=/home/pi/rfidExec
+ExecStart=/home/pi/rfidExec/rfid-daemon.sh
+
+[Install]
+WantedBy=multi-user.target

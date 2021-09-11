@@ -1,0 +1,66 @@
+-- load uuid extension
+.load uuid.so
+-- load regexp extension
+.load regexp.so
+
+DROP TABLE IF EXISTS Rfid;
+CREATE TABLE IF NOT EXISTS Rfid (
+	RfidId      TEXT       PRIMARY KEY DEFAULT(uuid()),
+	InsertTime  TIMESTAMP              DEFAULT CURRENT_TIMESTAMP,
+	UpdateTime  TIMESTAMP,
+	InsertUser  TEXT       NOT NULL,
+	UpdateUser  TEXT,
+	CurrentUser TEXT,
+	RfidNo      TEXT       NOT NULL,
+	Uri         TEXT       NOT NULL,
+	Description TEXT,
+	Jpeg        BLOB
+	UNIQUE(RfidNo, Uri)
+) WITHOUT ROWID;
+
+-- Primary key check
+DROP TRIGGER IF EXISTS TR_Rfid_RfidId_PKCheck;
+CREATE TRIGGER IF NOT EXISTS TR_Rfid_RfidId_PKCheck
+	BEFORE INSERT
+	ON Rfid
+	WHEN NOT regexp('^[0-9abcdef]{8}(-[0-9abcdef]{4}){4}[0-9abcdef]{8}$', NEW.RfidId)
+BEGIN
+	SELECT RAISE (ABORT, 'PRIMARY KEY constraint UUID (8-4-4-4-12) failed: Rfid.RfidId');
+END;
+
+-- Forbid modifying InsertUser, RfidId, InsertTime, UpdateTime
+DROP TRIGGER IF EXISTS TR_Rfid_NoUpdate;
+CREATE TRIGGER IF NOT EXISTS TR_Rfid_NoUpdate
+	BEFORE UPDATE OF RfidId, InsertUser, InsertTime, UpdateTime
+	ON Rfid
+BEGIN
+	SELECT
+	CASE
+        WHEN OLD.RfidId <> NEW.RfidId THEN RAISE (ABORT, 'UPDATE forbidden: Rfid.RfidId')
+        WHEN OLD.InsertUser <> NEW.InsertUser THEN RAISE (ABORT, 'UPDATE forbidden: Rfid.InsertUser')
+        WHEN OLD.InsertTime <> NEW.InsertTime THEN RAISE (ABORT, 'UPDATE forbidden: Rfid.InsertTime')
+        WHEN OLD.UpdateTime <> NEW.UpdateTime THEN RAISE (ABORT, 'UPDATE forbidden: Rfid.UpdateTime')
+	END;
+END;
+
+-- Enforce setting of CurrentUser on UPDATE
+DROP TRIGGER IF EXISTS TR_Rfid_CurrentUser_Enforce;
+CREATE TRIGGER IF NOT EXISTS TR_Rfid_CurrentUser_Enforce
+	BEFORE UPDATE
+	ON Rfid
+	WHEN OLD.CurrentUser IS NULL AND NEW.CurrentUser IS NULL
+BEGIN
+	SELECT RAISE (ABORT, 'UPDATE mandatory: Rfid.CurrentUser');
+END;
+
+-- Move CurrentUser to UpdateUser after UPDATE
+DROP TRIGGER IF EXISTS TR_Rfid_UpdateUser_Set;
+CREATE TRIGGER IF NOT EXISTS TR_Rfid_UpdateUser_Set
+	AFTER UPDATE
+	ON Rfid
+BEGIN
+	UPDATE Rfid SET UpdateUser  = NEW.CurrentUser,
+                        CurrentUser = NULL,
+                        UpdateTime  = CURRENT_TIMESTAMP
+	WHERE RfidId = NEW.RfidId;
+END;
