@@ -285,5 +285,16 @@ size seems to small you may use bigger ones.
 	amixer set Digital 1%+ # Volume up
 	amixer set Digital 1%- # Volume down
 
+V2.0
+====
+
+Due to [Spotify-API changes](https://developer.spotify.com/community/news/2022/04/12/libspotify-sunset/) a complete system architecture is needed.
+**mopidy** is obsolete (at least for controlling spotify).
+
+Keywords
+--------
+
+* [spotifyd](https://github.com/Spotifyd/spotifyd)
+* [spt](https://github.com/Rigellute/spotify-tui)
 
 
